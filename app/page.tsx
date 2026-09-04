@@ -48,6 +48,14 @@ interface Message {
   text: string;
 }
 
+interface CartItem {
+  id: number;
+  name: string;
+  price: number;
+  image: string;
+  quantity: number;
+}
+
 export default function HomePage() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -58,11 +66,52 @@ export default function HomePage() {
   // สถานะระบบสมาชิก (Auth Modal & User State)
   const [authModal, setAuthModal] = useState<'login' | 'register' | null>(null);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
-
-  // ฟอร์มสเตต
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+
+  // ================= STATE ตะกร้าสินค้า =================
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // ฟังก์ชันเพิ่มสินค้าลงตะกร้า
+  const addToCart = (product: typeof products[0]) => {
+    setCart((prevCart) => {
+      const existingItem = prevCart.find((item) => item.id === product.id);
+      if (existingItem) {
+        // ถ้ามีสินค้าอยู่แล้ว ให้เพิ่มจำนวน (quantity) ขึ้น 1
+        return prevCart.map((item) =>
+          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      } else {
+        // ถ้ายังไม่มี ให้เพิ่มรายการใหม่พร้อมจำนวนเริ่มต้นเป็น 1
+        return [...prevCart, { ...product, quantity: 1 }];
+      }
+    });
+    // เปิดหน้าต่างตะกร้าอัตโนมัติเมื่อกดเพิ่มสินค้า (เลือกเปิดหรือไม่ก็ได้)
+    setIsCartOpen(true);
+  };
+
+  // ฟังก์ชันลดจำนวนหรือลบสินค้า
+  const updateQuantity = (id: number, delta: number) => {
+    setCart((prevCart) =>
+      prevCart
+        .map((item) => {
+          if (item.id === id) {
+            const newQty = item.quantity + delta;
+            return newQty > 0 ? { ...item, quantity: newQty } : null;
+          }
+          return item;
+        })
+        .filter(Boolean) as CartItem[]
+    );
+  };
+
+  // คำนวณจำนวนชิ้นทั้งหมดในตะกร้าสำหรับแสดงที่ป้ายแจ้งเตือน
+  const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  // คำนวณราคารวมทั้งหมด
+  const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,7 +140,7 @@ export default function HomePage() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
-    setCurrentUser(email.split('@')[0]); // จำลองชื่อจากอีเมล
+    setCurrentUser(email.split('@')[0]);
     setAuthModal(null);
     setEmail('');
     setPassword('');
@@ -121,11 +170,17 @@ export default function HomePage() {
             <Link href="/about" className="text-gray-600 hover:text-indigo-600 font-medium">เกี่ยวกับเรา</Link>
           </nav>
           <div className="flex items-center space-x-4">
-            <button className="relative p-2 text-gray-600 hover:text-indigo-600 cursor-pointer">
+            {/* ปุ่มเปิดตะกร้าสินค้า */}
+            <button 
+              onClick={() => setIsCartOpen(true)}
+              className="relative p-2 text-gray-600 hover:text-indigo-600 cursor-pointer"
+            >
               🛒
-              <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                2
-              </span>
+              {totalCartItems > 0 && (
+                <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-bold">
+                  {totalCartItems}
+                </span>
+              )}
             </button>
 
             {currentUser ? (
@@ -222,7 +277,10 @@ export default function HomePage() {
                 </div>
               </div>
               <div className="p-4 pt-0">
-                <button className="w-full bg-indigo-600 text-white py-2 rounded-xl font-medium hover:bg-indigo-700 transition cursor-pointer">
+                <button
+                  onClick={() => addToCart(product)}
+                  className="w-full bg-indigo-600 text-white py-2 rounded-xl font-medium hover:bg-indigo-700 transition cursor-pointer"
+                >
                   เพิ่มลงตะกร้า
                 </button>
               </div>
@@ -238,6 +296,78 @@ export default function HomePage() {
         </div>
       </footer>
 
+      {/* ================= CART MODAL ================= */}
+      {isCartOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex justify-end">
+          <div className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col p-6 animate-in slide-in-from-right duration-300">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-gray-800">ตะกร้าสินค้าของคุณ ({totalCartItems})</h2>
+              <button
+                onClick={() => setIsCartOpen(false)}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* รายการในตะกร้า */}
+            <div className="flex-1 overflow-y-auto py-4 space-y-4">
+              {cart.length === 0 ? (
+                <div className="text-center text-gray-400 py-20">
+                  <span className="text-4xl block mb-2">🛒</span>
+                  <p>ยังไม่มีสินค้าในตะกร้า</p>
+                </div>
+              ) : (
+                cart.map((item) => (
+                  <div key={item.id} className="flex items-center space-x-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded-lg" />
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-sm text-gray-800 line-clamp-1">{item.name}</h4>
+                      <p className="text-indigo-600 font-bold text-sm">฿{item.price.toLocaleString()}</p>
+                      <div className="flex items-center space-x-2 mt-2">
+                        <button
+                          onClick={() => updateQuantity(item.id, -1)}
+                          className="w-6 h-6 bg-white border border-gray-200 rounded flex items-center justify-center text-xs font-bold hover:bg-gray-100 cursor-pointer"
+                        >
+                          -
+                        </button>
+                        <span className="text-sm font-medium">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.id, 1)}
+                          className="w-6 h-6 bg-white border border-gray-200 rounded flex items-center justify-center text-xs font-bold hover:bg-gray-100 cursor-pointer"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* สรุปราคาและการสั่งซื้อ */}
+            {cart.length > 0 && (
+              <div className="pt-4 border-t border-gray-100">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-gray-600 font-medium">ยอดรวมทั้งหมด</span>
+                  <span className="text-xl font-bold text-indigo-600">฿{totalPrice.toLocaleString()}</span>
+                </div>
+                <button
+                  onClick={() => {
+                    alert('สั่งซื้อสินค้าเรียบร้อยแล้ว! ขอบคุณที่ใช้บริการ kruklaapp');
+                    setCart([]);
+                    setIsCartOpen(false);
+                  }}
+                  className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium hover:bg-indigo-700 transition cursor-pointer"
+                >
+                  ดำเนินการสั่งซื้อ
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ================= AUTH MODALS ================= */}
       {authModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
@@ -249,7 +379,6 @@ export default function HomePage() {
               ✕
             </button>
 
-            {/* Login Form */}
             {authModal === 'login' && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">เข้าสู่ระบบ</h2>
@@ -296,7 +425,6 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Register Form */}
             {authModal === 'register' && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">สมัครสมาชิก</h2>
