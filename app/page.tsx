@@ -55,6 +55,15 @@ export default function HomePage() {
   ]);
   const [inputMessage, setInputMessage] = useState('');
 
+  // สถานะระบบสมาชิก (Auth Modal & User State)
+  const [authModal, setAuthModal] = useState<'login' | 'register' | null>(null);
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
+
+  // ฟอร์มสเตต
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim()) return;
@@ -79,6 +88,25 @@ export default function HomePage() {
     }, 600);
   };
 
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return;
+    setCurrentUser(email.split('@')[0]); // จำลองชื่อจากอีเมล
+    setAuthModal(null);
+    setEmail('');
+    setPassword('');
+  };
+
+  const handleRegister = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !email || !password) return;
+    setCurrentUser(name);
+    setAuthModal(null);
+    setName('');
+    setEmail('');
+    setPassword('');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 relative">
       {/* Navbar */}
@@ -93,12 +121,39 @@ export default function HomePage() {
             <Link href="/about" className="text-gray-600 hover:text-indigo-600 font-medium">เกี่ยวกับเรา</Link>
           </nav>
           <div className="flex items-center space-x-4">
-            <button className="relative p-2 text-gray-600 hover:text-indigo-600">
+            <button className="relative p-2 text-gray-600 hover:text-indigo-600 cursor-pointer">
               🛒
               <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
                 2
               </span>
             </button>
+
+            {currentUser ? (
+              <div className="flex items-center space-x-3">
+                <span className="text-sm font-medium text-gray-700 hidden sm:inline">👤 {currentUser}</span>
+                <button
+                  onClick={() => setCurrentUser(null)}
+                  className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg transition cursor-pointer"
+                >
+                  ออกจากระบบ
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setAuthModal('login')}
+                  className="text-sm font-medium text-indigo-600 hover:text-indigo-700 px-3 py-1.5 cursor-pointer"
+                >
+                  เข้าสู่ระบบ
+                </button>
+                <button
+                  onClick={() => setAuthModal('register')}
+                  className="text-sm font-medium bg-indigo-600 text-white px-4 py-1.5 rounded-lg hover:bg-indigo-700 transition cursor-pointer"
+                >
+                  สมัครสมาชิก
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -167,7 +222,7 @@ export default function HomePage() {
                 </div>
               </div>
               <div className="p-4 pt-0">
-                <button className="w-full bg-indigo-600 text-white py-2 rounded-xl font-medium hover:bg-indigo-700 transition">
+                <button className="w-full bg-indigo-600 text-white py-2 rounded-xl font-medium hover:bg-indigo-700 transition cursor-pointer">
                   เพิ่มลงตะกร้า
                 </button>
               </div>
@@ -183,8 +238,127 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* Chatbot Widget */}
-      <div className="fixed bottom-6 right-6 z-50">
+      {/* ================= AUTH MODALS ================= */}
+      {authModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
+            <button
+              onClick={() => setAuthModal(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold cursor-pointer"
+            >
+              ✕
+            </button>
+
+            {/* Login Form */}
+            {authModal === 'login' && (
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">เข้าสู่ระบบ</h2>
+                <p className="text-sm text-gray-500 mb-6">ยินดีต้อนรับกลับสู่ kruklaapp อีกครั้ง</p>
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">อีเมล</label>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@example.com"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-600 text-gray-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">รหัสผ่าน</label>
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-600 text-gray-800"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition cursor-pointer"
+                  >
+                    เข้าสู่ระบบ
+                  </button>
+                </form>
+                <p className="text-center text-sm text-gray-500 mt-6">
+                  ยังไม่มีบัญชีใช่ไหม?{' '}
+                  <button
+                    onClick={() => setAuthModal('register')}
+                    className="text-indigo-600 font-semibold hover:underline cursor-pointer"
+                  >
+                    สมัครสมาชิก
+                  </button>
+                </p>
+              </div>
+            )}
+
+            {/* Register Form */}
+            {authModal === 'register' && (
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">สมัครสมาชิก</h2>
+                <p className="text-sm text-gray-500 mb-6">สร้างบัญชีเพื่อเริ่มช้อปปิ้งและรับสิทธิพิเศษ</p>
+                <form onSubmit={handleRegister} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">ชื่อผู้ใช้งาน</label>
+                    <input
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="ชื่อของคุณ"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-600 text-gray-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">อีเมล</label>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@example.com"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-600 text-gray-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">รหัสผ่าน</label>
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-600 text-gray-800"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition cursor-pointer"
+                  >
+                    สมัครสมาชิก
+                  </button>
+                </form>
+                <p className="text-center text-sm text-gray-500 mt-6">
+                  มีบัญชีอยู่แล้วใช่ไหม?{' '}
+                  <button
+                    onClick={() => setAuthModal('login')}
+                    className="text-indigo-600 font-semibold hover:underline cursor-pointer"
+                  >
+                    เข้าสู่ระบบ
+                  </button>
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ================= CHATBOT WIDGET ================= */}
+      <div className="fixed bottom-6 right-6 z-40">
         {isChatOpen && (
           <div className="bg-white w-80 sm:w-96 h-[450px] rounded-2xl shadow-2xl border border-gray-200 flex flex-col mb-4 overflow-hidden transition-all duration-300">
             <div className="bg-indigo-600 text-white p-4 flex items-center justify-between">
