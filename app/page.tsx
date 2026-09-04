@@ -1,6 +1,5 @@
-'use client'; // จำเป็นสำหรับ Next.js App Router เมื่อใช้งาน useState และ event handlers
+'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -50,34 +49,26 @@ interface Message {
 }
 
 export default function HomePage() {
-  // สถานะสำหรับเปิด-ปิดแชทบอท
   const [isChatOpen, setIsChatOpen] = useState(false);
-  
-  // ประวัติการแชทเริ่มต้น
   const [messages, setMessages] = useState<Message[]>([
     { sender: 'bot', text: 'สวัสดีค่ะ! ยินดีต้อนรับสู่ kruklaapp มีสินค้าชิ้นไหนให้ช่วยแนะนำไหมคะ? 😊' }
   ]);
-  
-  // ข้อความที่ผู้ใช้กำลังพิมพ์
   const [inputMessage, setInputMessage] = useState('');
 
-  // ฟังก์ชันจำลองการตอบกลับของบอท
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim()) return;
 
     const userText = inputMessage;
-    // เพิ่มข้อความผู้ใช้
     setMessages((prev) => [...prev, { sender: 'user', text: userText }]);
     setInputMessage('');
 
-    // จำลองบอทตอบกลับหลังจาก 600 มิลลิวินาที
     setTimeout(() => {
       let botReply = 'ขอบคุณสำหรับข้อความค่ะ เจ้าหน้าที่แอดมินจะรีบตรวจสอบและติดต่อกลับโดยเร็วที่สุด หรือสอบถามโปรโมชั่นเพิ่มเติมได้เลยนะคะ';
       
       const lowerText = userText.toLowerCase();
       if (lowerText.includes('ส่ง') || lowerText.includes('ค่าส่ง')) {
-        botReply = 'ทางเราจัดส่งสินค้าทั่วประเทศด้วย Flash และ Kerry ค่าจัดส่งเริ่มต้นเพียง 30 บาท ส่งไวภายใน 1-3 วันค่ะ 📦';
+        botReply = 'ทางเราจัดส่งสินค้าทั่วประเทศ ค่าจัดส่งเริ่มต้นเพียง 30 บาท ส่งไวภายใน 1-3 วันค่ะ 📦';
       } else if (lowerText.includes('ราคา') || lowerText.includes('ลด')) {
         botReply = 'ตอนนี้เรามีโค้ดส่วนลดพิเศษสำหรับลูกค้าใหม่ ลดทันที 10% เมื่อช้อปครบ 500 บาทค่ะ 🏷️';
       } else if (lowerText.includes('สวัสดี') || lowerText.includes('hi')) {
@@ -121,12 +112,12 @@ export default function HomePage() {
           <p className="text-lg sm:text-xl text-indigo-100 mb-8 max-w-2xl mx-auto">
             แหล่งรวมสินค้าราคาพิเศษ คัดสรรคุณภาพดีเพื่อคุณ ช้อปง่าย ส่งไว มั่นใจได้ 100%
           </p>
-          <Link
+          <a
             href="#products"
-            className="bg-white text-indigo-600 font-semibold px-8 py-3 rounded-full shadow-lg hover:bg-gray-100 transition duration-300"
+            className="bg-white text-indigo-600 font-semibold px-8 py-3 rounded-full shadow-lg hover:bg-gray-100 transition duration-300 inline-block"
           >
             ช้อปเลยตอนนี้
-          </Link>
+          </a>
         </div>
       </section>
 
@@ -157,11 +148,10 @@ export default function HomePage() {
             >
               <div>
                 <div className="relative h-48 w-full bg-gray-200">
-                  <Image
+                  <img
                     src={product.image}
                     alt={product.name}
-                    fill
-                    className="object-cover"
+                    className="w-full h-full object-cover"
                   />
                 </div>
                 <div className="p-4">
@@ -193,12 +183,10 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* ================= CHATBOT WIDGET ================= */}
+      {/* Chatbot Widget */}
       <div className="fixed bottom-6 right-6 z-50">
-        {/* หน้าต่างแชท (แสดงเมื่อกดเปิด) */}
         {isChatOpen && (
-          <div className="bg-white w-80 sm:w-96 h-[450px] rounded-2xl shadow-2xl border border-gray-200 flex flex-col mb-4 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
-            {/* หัวข้อแชทบอท */}
+          <div className="bg-white w-80 sm:w-96 h-[450px] rounded-2xl shadow-2xl border border-gray-200 flex flex-col mb-4 overflow-hidden transition-all duration-300">
             <div className="bg-indigo-600 text-white p-4 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <span className="text-xl">🤖</span>
@@ -211,13 +199,12 @@ export default function HomePage() {
               </div>
               <button 
                 onClick={() => setIsChatOpen(false)}
-                className="text-indigo-200 hover:text-white text-lg font-bold p-1"
+                className="text-indigo-200 hover:text-white text-lg font-bold p-1 cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            {/* กล่องข้อความแชท */}
             <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50">
               {messages.map((msg, index) => (
                 <div
@@ -237,18 +224,17 @@ export default function HomePage() {
               ))}
             </div>
 
-            {/* แถบพิมพ์ข้อความ */}
             <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-gray-100 flex gap-2">
               <input
                 type="text"
                 placeholder="พิมพ์ข้อความสอบถาม..."
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                className="flex-1 px-4 py-2 text-sm border border-gray-200 rounded-full focus:outline-none focus:border-indigo-600"
+                className="flex-1 px-4 py-2 text-sm border border-gray-200 rounded-full focus:outline-none focus:border-indigo-600 text-gray-800"
               />
               <button
                 type="submit"
-                className="bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-indigo-700 transition"
+                className="bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-indigo-700 transition cursor-pointer"
               >
                 ส่ง
               </button>
@@ -256,10 +242,9 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* ปุ่มกดเปิด-ปิดแชทบอท */}
         <button
           onClick={() => setIsChatOpen(!isChatOpen)}
-          className="bg-indigo-600 text-white w-14 h-14 rounded-full shadow-lg hover:bg-indigo-700 transition flex items-center justify-center text-2xl relative"
+          className="bg-indigo-600 text-white w-14 h-14 rounded-full shadow-lg hover:bg-indigo-700 transition flex items-center justify-center text-2xl relative cursor-pointer"
         >
           💬
           {!isChatOpen && (
@@ -269,7 +254,6 @@ export default function HomePage() {
           )}
         </button>
       </div>
-      {/* ================= END CHATBOT ================= */}
     </div>
   );
 }
