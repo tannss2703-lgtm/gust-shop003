@@ -1,5 +1,8 @@
+'use client'; // จำเป็นสำหรับ Next.js App Router เมื่อใช้งาน useState และ event handlers
+
 import Image from 'next/image';
 import Link from 'next/link';
+import { useState } from 'react';
 
 // ข้อมูลจำลองสำหรับหมวดหมู่สินค้า
 const categories = [
@@ -21,7 +24,7 @@ const products = [
   {
     id: 2,
     name: 'หูฟังไร้สาย Noise Cancelling',
-    price: 1,290,
+    price: 1290,
     image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=500&q=80',
     category: 'อุปกรณ์ไอที',
   },
@@ -41,9 +44,52 @@ const products = [
   },
 ];
 
+interface Message {
+  sender: 'bot' | 'user';
+  text: string;
+}
+
 export default function HomePage() {
+  // สถานะสำหรับเปิด-ปิดแชทบอท
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  
+  // ประวัติการแชทเริ่มต้น
+  const [messages, setMessages] = useState<Message[]>([
+    { sender: 'bot', text: 'สวัสดีค่ะ! ยินดีต้อนรับสู่ kruklaapp มีสินค้าชิ้นไหนให้ช่วยแนะนำไหมคะ? 😊' }
+  ]);
+  
+  // ข้อความที่ผู้ใช้กำลังพิมพ์
+  const [inputMessage, setInputMessage] = useState('');
+
+  // ฟังก์ชันจำลองการตอบกลับของบอท
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputMessage.trim()) return;
+
+    const userText = inputMessage;
+    // เพิ่มข้อความผู้ใช้
+    setMessages((prev) => [...prev, { sender: 'user', text: userText }]);
+    setInputMessage('');
+
+    // จำลองบอทตอบกลับหลังจาก 600 มิลลิวินาที
+    setTimeout(() => {
+      let botReply = 'ขอบคุณสำหรับข้อความค่ะ เจ้าหน้าที่แอดมินจะรีบตรวจสอบและติดต่อกลับโดยเร็วที่สุด หรือสอบถามโปรโมชั่นเพิ่มเติมได้เลยนะคะ';
+      
+      const lowerText = userText.toLowerCase();
+      if (lowerText.includes('ส่ง') || lowerText.includes('ค่าส่ง')) {
+        botReply = 'ทางเราจัดส่งสินค้าทั่วประเทศด้วย Flash และ Kerry ค่าจัดส่งเริ่มต้นเพียง 30 บาท ส่งไวภายใน 1-3 วันค่ะ 📦';
+      } else if (lowerText.includes('ราคา') || lowerText.includes('ลด')) {
+        botReply = 'ตอนนี้เรามีโค้ดส่วนลดพิเศษสำหรับลูกค้าใหม่ ลดทันที 10% เมื่อช้อปครบ 500 บาทค่ะ 🏷️';
+      } else if (lowerText.includes('สวัสดี') || lowerText.includes('hi')) {
+        botReply = 'สวัสดีค่ะ! สนใจสินค้าหมวดไหนหรือต้องการให้แอดมินช่วยแนะนำตัวไหนดีคะ?';
+      }
+
+      setMessages((prev) => [...prev, { sender: 'bot', text: botReply }]);
+    }, 600);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800">
+    <div className="min-h-screen bg-gray-50 text-gray-800 relative">
       {/* Navbar */}
       <header className="sticky top-0 z-50 bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -146,6 +192,84 @@ export default function HomePage() {
           &copy; {new Date().getFullYear()} kruklaapp. All rights reserved.
         </div>
       </footer>
+
+      {/* ================= CHATBOT WIDGET ================= */}
+      <div className="fixed bottom-6 right-6 z-50">
+        {/* หน้าต่างแชท (แสดงเมื่อกดเปิด) */}
+        {isChatOpen && (
+          <div className="bg-white w-80 sm:w-96 h-[450px] rounded-2xl shadow-2xl border border-gray-200 flex flex-col mb-4 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+            {/* หัวข้อแชทบอท */}
+            <div className="bg-indigo-600 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-xl">🤖</span>
+                <div>
+                  <h3 className="font-bold text-sm">kruklaapp Assistant</h3>
+                  <span className="text-xs text-indigo-200 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-green-400 rounded-full inline-block"></span> ออนไลน์
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsChatOpen(false)}
+                className="text-indigo-200 hover:text-white text-lg font-bold p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* กล่องข้อความแชท */}
+            <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50">
+              {messages.map((msg, index) => (
+                <div
+                  key={index}
+                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[75%] p-3 rounded-2xl text-sm ${
+                      msg.sender === 'user'
+                        ? 'bg-indigo-600 text-white rounded-br-none'
+                        : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-bl-none'
+                    }`}
+                  >
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* แถบพิมพ์ข้อความ */}
+            <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-gray-100 flex gap-2">
+              <input
+                type="text"
+                placeholder="พิมพ์ข้อความสอบถาม..."
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                className="flex-1 px-4 py-2 text-sm border border-gray-200 rounded-full focus:outline-none focus:border-indigo-600"
+              />
+              <button
+                type="submit"
+                className="bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-indigo-700 transition"
+              >
+                ส่ง
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* ปุ่มกดเปิด-ปิดแชทบอท */}
+        <button
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          className="bg-indigo-600 text-white w-14 h-14 rounded-full shadow-lg hover:bg-indigo-700 transition flex items-center justify-center text-2xl relative"
+        >
+          💬
+          {!isChatOpen && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+              1
+            </span>
+          )}
+        </button>
+      </div>
+      {/* ================= END CHATBOT ================= */}
     </div>
   );
 }
