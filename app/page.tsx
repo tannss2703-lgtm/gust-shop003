@@ -17,7 +17,7 @@ const initialProducts = [
     id: 1,
     name: 'เสื้อกันหนาว Minimal Style',
     price: 590,
-    stock: 15, // จำนวนสต็อกเริ่มต้น
+    stock: 15,
     image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=500&q=80',
     category: 'เสื้อผ้าแฟชั่น',
   },
@@ -97,7 +97,7 @@ export default function HomePage() {
   ]);
   const [inputMessage, setInputMessage] = useState('');
 
-  // เพิ่มสินค้าลงตะกร้า (ตรวจสอบสต็อกคงเหลือ)
+  // ฟังก์ชันเพิ่มสินค้าลงตะกร้า (พร้อมเปิด Modal ตะกร้าทันที)
   const addToCart = (product: typeof products[0]) => {
     const existingInCart = cart.find((item) => item.id === product.id);
     const currentQtyInCart = existingInCart ? existingInCart.quantity : 0;
@@ -116,6 +116,8 @@ export default function HomePage() {
         return [...prevCart, { ...product, quantity: 1 }];
       }
     });
+
+    // เปิดหน้าต่างตะกร้าอัตโนมัติเมื่อกดเพิ่มสินค้า
     setIsCartOpen(true);
   };
 
@@ -148,7 +150,6 @@ export default function HomePage() {
 
   // ดำเนินการสั่งซื้อ (ตัดสต็อกสินค้า และบันทึกลงบัญชีสินค้า)
   const handleCheckout = () => {
-    // ตัดสต็อกสินค้าจริง
     const updatedProducts = products.map((prod) => {
       const cartItem = cart.find((item) => item.id === prod.id);
       if (cartItem) {
@@ -157,7 +158,6 @@ export default function HomePage() {
       return prod;
     });
 
-    // บันทึกประวัติลง Stock Ledger
     const newLogs: StockLog[] = cart.map((item, index) => ({
       id: Date.now() + index,
       date: new Date().toLocaleString(),
@@ -225,7 +225,6 @@ export default function HomePage() {
           <nav className="hidden md:flex space-x-6 items-center">
             <Link href="/" className="text-gray-600 hover:text-indigo-600 font-medium">หน้าแรก</Link>
             <Link href="#products" className="text-gray-600 hover:text-indigo-600 font-medium">เลือกสินค้า</Link>
-            {/* ปุ่มเปิดระบบบัญชีสินค้า (Stock Ledger) */}
             <button
               onClick={() => setIsStockModalOpen(true)}
               className="text-gray-600 hover:text-indigo-600 font-medium cursor-pointer flex items-center gap-1"
@@ -234,13 +233,15 @@ export default function HomePage() {
             </button>
           </nav>
           <div className="flex items-center space-x-4">
+            {/* ไอคอนตะกร้าสินค้า (คลิกเพื่อเปิดดูสินค้าที่เพิ่มไป) */}
             <button 
               onClick={() => setIsCartOpen(true)}
-              className="relative p-2 text-gray-600 hover:text-indigo-600 cursor-pointer"
+              className="relative p-2 text-gray-600 hover:text-indigo-600 cursor-pointer text-xl"
+              title="ดูตะกร้าสินค้า"
             >
               🛒
               {totalCartItems > 0 && (
-                <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-bold">
+                <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                   {totalCartItems}
                 </span>
               )}
@@ -321,7 +322,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured Products (หน้าเลือกสินค้า พร้อมแสดงสต็อกคงเหลือ) */}
+      {/* Featured Products */}
       <section id="products" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <h2 className="text-2xl font-bold mb-6">สินค้าแนะนำ</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -378,7 +379,7 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* ================= STOCK LEDGER MODAL (ระบบบัญชีสินค้า) ================= */}
+      {/* ================= STOCK LEDGER MODAL ================= */}
       {isStockModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
@@ -393,7 +394,6 @@ export default function HomePage() {
             </div>
 
             <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              {/* ตารางสต็อกคงเหลือปัจจุบัน */}
               <div>
                 <h3 className="font-bold text-gray-800 mb-3 text-base">สถานะสินค้าคงเหลือปัจจุบัน</h3>
                 <div className="overflow-x-auto border border-gray-100 rounded-xl">
@@ -424,7 +424,6 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* ตารางประวัติความเคลื่อนไหวสต็อก (Stock Movement History) */}
               <div>
                 <h3 className="font-bold text-gray-800 mb-3 text-base">ประวัติความเคลื่อนไหว (Stock Movement Ledger)</h3>
                 <div className="overflow-x-auto border border-gray-100 rounded-xl">
