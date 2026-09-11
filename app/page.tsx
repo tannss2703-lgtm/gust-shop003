@@ -69,6 +69,10 @@ interface StockLog {
   note: string;
 }
 
+interface PurchasedItem extends CartItem {
+  purchasedAt: string;
+}
+
 export default function HomePage() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [authModal, setAuthModal] = useState<'login' | 'register' | null>('register');
@@ -82,6 +86,9 @@ export default function HomePage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   
+  // สถานะเก็บรายการสินค้าที่ถูกตัดสต็อก (สั่งซื้อสำเร็จแล้ว)
+  const [recentPurchases, setRecentPurchases] = useState<PurchasedItem[]>([]);
+
   // สถานะสำหรับระบบบัญชีสินค้า (Stock Ledger Modal)
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [stockLogs, setStockLogs] = useState<StockLog[]>([
@@ -117,7 +124,6 @@ export default function HomePage() {
       }
     });
 
-    // เปิดหน้าต่างตะกร้าอัตโนมัติเมื่อกดเพิ่มสินค้า
     setIsCartOpen(true);
   };
 
@@ -148,7 +154,7 @@ export default function HomePage() {
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  // ดำเนินการสั่งซื้อ (ตัดสต็อกสินค้า และบันทึกลงบัญชีสินค้า)
+  // ดำเนินการสั่งซื้อ (ตัดสต็อกสินค้า และบันทึกลงบัญชีสินค้า พร้อมนำรูปและข้อมูลมาแสดงในส่วนล่าสุด)
   const handleCheckout = () => {
     const updatedProducts = products.map((prod) => {
       const cartItem = cart.find((item) => item.id === prod.id);
@@ -167,10 +173,18 @@ export default function HomePage() {
       note: `ขายให้ลูกค้า: ${currentUser || 'Guest'}`,
     }));
 
+    // นำข้อมูลสินค้าที่สั่งซื้อมาเก็บไว้แสดงผล
+    const purchasedTimestamp = new Date().toLocaleString();
+    const newPurchases: PurchasedItem[] = cart.map((item) => ({
+      ...item,
+      purchasedAt: purchasedTimestamp,
+    }));
+
     setProducts(updatedProducts);
     setStockLogs((prev) => [...newLogs, ...prev]);
+    setRecentPurchases((prev) => [...newPurchases, ...prev]); // บันทึกข้อมูลมาแสดงตรงส่วนแสดงผลล่าสุด
 
-    alert('สั่งซื้อสินค้าเรียบร้อยแล้ว! ระบบได้ทำการตัดสต็อกและบันทึกบัญชีสินค้าให้แล้วค่ะ');
+    alert('สั่งซื้อสินค้าเรียบร้อยแล้ว! ระบบได้ทำการตัดสต็อกและนำข้อมูลสินค้ามาแสดงให้เรียบร้อยค่ะ');
     setCart([]);
     setIsCartOpen(false);
   };
@@ -233,7 +247,6 @@ export default function HomePage() {
             </button>
           </nav>
           <div className="flex items-center space-x-4">
-            {/* ไอคอนตะกร้าสินค้า (คลิกเพื่อเปิดดูสินค้าที่เพิ่มไป) */}
             <button 
               onClick={() => setIsCartOpen(true)}
               className="relative p-2 text-gray-600 hover:text-indigo-600 cursor-pointer text-xl"
@@ -370,6 +383,48 @@ export default function HomePage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* ================= RECENT PURCHASES SECTION (แสดงรูปและข้อมูลสินค้าที่พึ่งตัดสต็อก) ================= */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 border-t border-gray-200">
+        <h2 className="text-2xl font-bold mb-2 text-gray-800">🛍️ รายการสินค้าที่สั่งซื้อล่าสุด (ตัดสต็อกแล้ว)</h2>
+        <p className="text-sm text-gray-500 mb-6">รูปและข้อมูลสินค้าที่คุณทำรายการสั่งซื้อสำเร็จจะแสดงอัปเดตตรงนี้ทันที</p>
+        
+        {recentPurchases.length === 0 ? (
+          <div className="bg-white border-2 border-dashed border-gray-200 rounded-2xl p-12 text-center text-gray-400">
+            <span className="text-4xl block mb-2">📦</span>
+            <p>ยังไม่มีรายการสั่งซื้อหรือตัดสต็อกสินค้าในขณะนี้</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {recentPurchases.map((item, index) => (
+              <div
+                key={index}
+                className="bg-white rounded-2xl shadow-sm overflow-hidden border border-indigo-100 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="relative h-44 w-full bg-gray-200">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                    />
+                    <span className="absolute top-2 left-2 bg-indigo-600 text-white px-2.5 py-0.5 rounded-full text-xs font-bold shadow">
+                      ซื้อแล้ว ({item.quantity} ชิ้น)
+                    </span>
+                  </div>
+                  <div className="p-4">
+                    <span className="text-xs text-gray-400 block mb-1">เวลาซื้อ: {item.purchasedAt}</span>
+                    <h3 className="font-semibold text-gray-800 line-clamp-1">{item.name}</h3>
+                    <p className="text-indigo-600 font-bold text-base mt-2">
+                      ฿{(item.price * item.quantity).toLocaleString()} <span className="text-xs text-gray-400 font-normal">(฿{item.price.toLocaleString()} / ชิ้น)</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Footer */}
