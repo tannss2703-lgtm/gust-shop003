@@ -294,13 +294,13 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero Section (Minimalist Warm & Airy) */}
+      {/* Hero Section */}
       <section className="max-w-6xl mx-auto px-6 py-20 text-center">
         <span className="inline-block text-xs font-semibold tracking-widest text-neutral-400 uppercase mb-4 bg-neutral-100 px-3 py-1 rounded-full">
           New Collection 2026
         </span>
         <h1 className="text-4xl sm:text-5xl font-light tracking-tight text-neutral-900 mb-6 leading-tight">
-          ดีไซน์เรียบง่าย เพื่อวิถีชีวิตที่ลงตัว
+          Gust Shop
         </h1>
         <p className="text-neutral-500 max-w-lg mx-auto mb-10 text-sm sm:text-base font-light leading-relaxed">
           คัดสรรสินค้าคุณภาพดีไซน์มินิมอล พร้อมระบบจัดการคำสั่งซื้อและสต็อกมาตรฐานโปร่งใส
