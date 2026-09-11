@@ -57,42 +57,39 @@ interface CartItem {
 }
 
 export default function HomePage() {
+  // เริ่มต้นด้วยสถานะยังไม่ล็อกอิน และกำหนดให้หน้าแรกเปิด Modal สมัครสมาชิกทันที
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [authModal, setAuthModal] = useState<'login' | 'register' | null>('register');
+
+  // ฟอร์มสเตต
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+
+  // ตะกร้าสินค้าและแชทบอท
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { sender: 'bot', text: 'สวัสดีค่ะ! ยินดีต้อนรับสู่ kruklaapp มีสินค้าชิ้นไหนให้ช่วยแนะนำไหมคะ? 😊' }
   ]);
   const [inputMessage, setInputMessage] = useState('');
 
-  // สถานะระบบสมาชิก (Auth Modal & User State)
-  const [authModal, setAuthModal] = useState<'login' | 'register' | null>(null);
-  const [currentUser, setCurrentUser] = useState<string | null>(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-
-  // ================= STATE ตะกร้าสินค้า =================
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-
   // ฟังก์ชันเพิ่มสินค้าลงตะกร้า
   const addToCart = (product: typeof products[0]) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === product.id);
       if (existingItem) {
-        // ถ้ามีสินค้าอยู่แล้ว ให้เพิ่มจำนวน (quantity) ขึ้น 1
         return prevCart.map((item) =>
           item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       } else {
-        // ถ้ายังไม่มี ให้เพิ่มรายการใหม่พร้อมจำนวนเริ่มต้นเป็น 1
         return [...prevCart, { ...product, quantity: 1 }];
       }
     });
-    // เปิดหน้าต่างตะกร้าอัตโนมัติเมื่อกดเพิ่มสินค้า (เลือกเปิดหรือไม่ก็ได้)
     setIsCartOpen(true);
   };
 
-  // ฟังก์ชันลดจำนวนหรือลบสินค้า
   const updateQuantity = (id: number, delta: number) => {
     setCart((prevCart) =>
       prevCart
@@ -107,11 +104,28 @@ export default function HomePage() {
     );
   };
 
-  // คำนวณจำนวนชิ้นทั้งหมดในตะกร้าสำหรับแสดงที่ป้ายแจ้งเตือน
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-
-  // คำนวณราคารวมทั้งหมด
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  // สมัครสมาชิกเสร็จ -> บันทึกชื่อผู้ใช้ ปิด Modal -> พาไปหน้าเลือกสินค้าอัตโนมัติ
+  const handleRegister = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !email || !password) return;
+    setCurrentUser(name);
+    setAuthModal(null); // ปิด Modal สมัครสมาชิก
+    setName('');
+    setEmail('');
+    setPassword('');
+  };
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return;
+    setCurrentUser(email.split('@')[0]);
+    setAuthModal(null);
+    setEmail('');
+    setPassword('');
+  };
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,25 +151,6 @@ export default function HomePage() {
     }, 600);
   };
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) return;
-    setCurrentUser(email.split('@')[0]);
-    setAuthModal(null);
-    setEmail('');
-    setPassword('');
-  };
-
-  const handleRegister = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name || !email || !password) return;
-    setCurrentUser(name);
-    setAuthModal(null);
-    setName('');
-    setEmail('');
-    setPassword('');
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 relative">
       {/* Navbar */}
@@ -170,7 +165,6 @@ export default function HomePage() {
             <Link href="/about" className="text-gray-600 hover:text-indigo-600 font-medium">เกี่ยวกับเรา</Link>
           </nav>
           <div className="flex items-center space-x-4">
-            {/* ปุ่มเปิดตะกร้าสินค้า */}
             <button 
               onClick={() => setIsCartOpen(true)}
               className="relative p-2 text-gray-600 hover:text-indigo-600 cursor-pointer"
@@ -187,7 +181,10 @@ export default function HomePage() {
               <div className="flex items-center space-x-3">
                 <span className="text-sm font-medium text-gray-700 hidden sm:inline">👤 {currentUser}</span>
                 <button
-                  onClick={() => setCurrentUser(null)}
+                  onClick={() => {
+                    setCurrentUser(null);
+                    setAuthModal('register'); // เปิดหน้าสมัครสมาชิกใหม่เมื่อกดออกจากระบบ
+                  }}
                   className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg transition cursor-pointer"
                 >
                   ออกจากระบบ
@@ -247,7 +244,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured Products */}
+      {/* Featured Products (หน้าเลือกสินค้า) */}
       <section id="products" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <h2 className="text-2xl font-bold mb-6">สินค้าแนะนำ</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -296,89 +293,21 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* ================= CART MODAL ================= */}
-      {isCartOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex justify-end">
-          <div className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col p-6 animate-in slide-in-from-right duration-300">
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-gray-800">ตะกร้าสินค้าของคุณ ({totalCartItems})</h2>
+      {/* ================= AUTH MODALS (เปิดอัตโนมัติเมื่อเข้าหน้าแรก) ================= */}
+      {authModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
+            {/* ซ่อนปุ่มกากบาทถ้ายังไม่ได้สมัครสมาชิก เพื่อบังคับให้สมัครก่อน */}
+            {currentUser && (
               <button
-                onClick={() => setIsCartOpen(false)}
-                className="text-gray-400 hover:text-gray-600 text-xl font-bold cursor-pointer"
+                onClick={() => setAuthModal(null)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold cursor-pointer"
               >
                 ✕
               </button>
-            </div>
-
-            {/* รายการในตะกร้า */}
-            <div className="flex-1 overflow-y-auto py-4 space-y-4">
-              {cart.length === 0 ? (
-                <div className="text-center text-gray-400 py-20">
-                  <span className="text-4xl block mb-2">🛒</span>
-                  <p>ยังไม่มีสินค้าในตะกร้า</p>
-                </div>
-              ) : (
-                cart.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded-lg" />
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-sm text-gray-800 line-clamp-1">{item.name}</h4>
-                      <p className="text-indigo-600 font-bold text-sm">฿{item.price.toLocaleString()}</p>
-                      <div className="flex items-center space-x-2 mt-2">
-                        <button
-                          onClick={() => updateQuantity(item.id, -1)}
-                          className="w-6 h-6 bg-white border border-gray-200 rounded flex items-center justify-center text-xs font-bold hover:bg-gray-100 cursor-pointer"
-                        >
-                          -
-                        </button>
-                        <span className="text-sm font-medium">{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.id, 1)}
-                          className="w-6 h-6 bg-white border border-gray-200 rounded flex items-center justify-center text-xs font-bold hover:bg-gray-100 cursor-pointer"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* สรุปราคาและการสั่งซื้อ */}
-            {cart.length > 0 && (
-              <div className="pt-4 border-t border-gray-100">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-gray-600 font-medium">ยอดรวมทั้งหมด</span>
-                  <span className="text-xl font-bold text-indigo-600">฿{totalPrice.toLocaleString()}</span>
-                </div>
-                <button
-                  onClick={() => {
-                    alert('สั่งซื้อสินค้าเรียบร้อยแล้ว! ขอบคุณที่ใช้บริการ kruklaapp');
-                    setCart([]);
-                    setIsCartOpen(false);
-                  }}
-                  className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium hover:bg-indigo-700 transition cursor-pointer"
-                >
-                  ดำเนินการสั่งซื้อ
-                </button>
-              </div>
             )}
-          </div>
-        </div>
-      )}
 
-      {/* ================= AUTH MODALS ================= */}
-      {authModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
-            <button
-              onClick={() => setAuthModal(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold cursor-pointer"
-            >
-              ✕
-            </button>
-
+            {/* Login Form */}
             {authModal === 'login' && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">เข้าสู่ระบบ</h2>
@@ -425,10 +354,11 @@ export default function HomePage() {
               </div>
             )}
 
+            {/* Register Form */}
             {authModal === 'register' && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">สมัครสมาชิก</h2>
-                <p className="text-sm text-gray-500 mb-6">สร้างบัญชีเพื่อเริ่มช้อปปิ้งและรับสิทธิพิเศษ</p>
+                <p className="text-sm text-gray-500 mb-6">สมัครสมาชิกเพื่อเริ่มต้นเลือกซื้อสินค้ากับ kruklaapp</p>
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1">ชื่อผู้ใช้งาน</label>
@@ -467,7 +397,7 @@ export default function HomePage() {
                     type="submit"
                     className="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition cursor-pointer"
                   >
-                    สมัครสมาชิก
+                    สมัครสมาชิกและเริ่มช้อป
                   </button>
                 </form>
                 <p className="text-center text-sm text-gray-500 mt-6">
@@ -479,6 +409,76 @@ export default function HomePage() {
                     เข้าสู่ระบบ
                   </button>
                 </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ================= CART MODAL ================= */}
+      {isCartOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex justify-end">
+          <div className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col p-6 animate-in slide-in-from-right duration-300">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-gray-800">ตะกร้าสินค้าของคุณ ({totalCartItems})</h2>
+              <button
+                onClick={() => setIsCartOpen(false)}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-4 space-y-4">
+              {cart.length === 0 ? (
+                <div className="text-center text-gray-400 py-20">
+                  <span className="text-4xl block mb-2">🛒</span>
+                  <p>ยังไม่มีสินค้าในตะกร้า</p>
+                </div>
+              ) : (
+                cart.map((item) => (
+                  <div key={item.id} className="flex items-center space-x-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded-lg" />
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-sm text-gray-800 line-clamp-1">{item.name}</h4>
+                      <p className="text-indigo-600 font-bold text-sm">฿{item.price.toLocaleString()}</p>
+                      <div className="flex items-center space-x-2 mt-2">
+                        <button
+                          onClick={() => updateQuantity(item.id, -1)}
+                          className="w-6 h-6 bg-white border border-gray-200 rounded flex items-center justify-center text-xs font-bold hover:bg-gray-100 cursor-pointer"
+                        >
+                          -
+                        </button>
+                        <span className="text-sm font-medium">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.id, 1)}
+                          className="w-6 h-6 bg-white border border-gray-200 rounded flex items-center justify-center text-xs font-bold hover:bg-gray-100 cursor-pointer"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {cart.length > 0 && (
+              <div className="pt-4 border-t border-gray-100">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-gray-600 font-medium">ยอดรวมทั้งหมด</span>
+                  <span className="text-xl font-bold text-indigo-600">฿{totalPrice.toLocaleString()}</span>
+                </div>
+                <button
+                  onClick={() => {
+                    alert('สั่งซื้อสินค้าเรียบร้อยแล้ว! ขอบคุณที่ใช้บริการ kruklaapp');
+                    setCart([]);
+                    setIsCartOpen(false);
+                  }}
+                  className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium hover:bg-indigo-700 transition cursor-pointer"
+                >
+                  ดำเนินการสั่งซื้อ
+                </button>
               </div>
             )}
           </div>
