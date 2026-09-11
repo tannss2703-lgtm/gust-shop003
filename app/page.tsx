@@ -11,12 +11,13 @@ const categories = [
   { id: 4, name: 'ของใช้ในบ้าน', icon: '🏠' },
 ];
 
-// ข้อมูลจำลองสำหรับสินค้า
-const products = [
+// ข้อมูลจำลองสำหรับสินค้าและสต็อกคงเหลือ
+const initialProducts = [
   {
     id: 1,
     name: 'เสื้อกันหนาว Minimal Style',
     price: 590,
+    stock: 15, // จำนวนสต็อกเริ่มต้น
     image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=500&q=80',
     category: 'เสื้อผ้าแฟชั่น',
   },
@@ -24,6 +25,7 @@ const products = [
     id: 2,
     name: 'หูฟังไร้สาย Noise Cancelling',
     price: 1290,
+    stock: 8,
     image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=500&q=80',
     category: 'อุปกรณ์ไอที',
   },
@@ -31,6 +33,7 @@ const products = [
     id: 3,
     name: 'แก้วเก็บความเย็น 30 oz',
     price: 350,
+    stock: 25,
     image: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=500&q=80',
     category: 'ของใช้ในบ้าน',
   },
@@ -38,6 +41,7 @@ const products = [
     id: 4,
     name: 'กระเป๋าผ้า Canvas อเนกประสงค์',
     price: 220,
+    stock: 12,
     image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=500&q=80',
     category: 'เสื้อผ้าแฟชั่น',
   },
@@ -56,30 +60,55 @@ interface CartItem {
   quantity: number;
 }
 
+interface StockLog {
+  id: number;
+  date: string;
+  productName: string;
+  type: 'IN' | 'OUT' | 'ADJUST';
+  quantity: number;
+  note: string;
+}
+
 export default function HomePage() {
-  // เริ่มต้นด้วยสถานะยังไม่ล็อกอิน และกำหนดให้หน้าแรกเปิด Modal สมัครสมาชิกทันที
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [authModal, setAuthModal] = useState<'login' | 'register' | null>('register');
 
-  // ฟอร์มสเตต
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
 
-  // ตะกร้าสินค้าและแชทบอท
+  // ระบบสินค้าและสต็อก
+  const [products, setProducts] = useState(initialProducts);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  
+  // สถานะสำหรับระบบบัญชีสินค้า (Stock Ledger Modal)
+  const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+  const [stockLogs, setStockLogs] = useState<StockLog[]>([
+    { id: 1, date: new Date().toLocaleString(), productName: 'เสื้อกันหนาว Minimal Style', type: 'IN', quantity: 15, note: 'รับสินค้าเข้าล็อตแรก' },
+    { id: 2, date: new Date().toLocaleString(), productName: 'หูฟังไร้สาย Noise Cancelling', type: 'IN', quantity: 8, note: 'รับสินค้าเข้าล็อตแรก' },
+    { id: 3, date: new Date().toLocaleString(), productName: 'แก้วเก็บความเย็น 30 oz', type: 'IN', quantity: 25, note: 'รับสินค้าเข้าล็อตแรก' },
+    { id: 4, date: new Date().toLocaleString(), productName: 'กระเป๋าผ้า Canvas อเนกประสงค์', type: 'IN', quantity: 12, note: 'รับสินค้าเข้าล็อตแรก' },
+  ]);
+
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { sender: 'bot', text: 'สวัสดีค่ะ! ยินดีต้อนรับสู่ kruklaapp มีสินค้าชิ้นไหนให้ช่วยแนะนำไหมคะ? 😊' }
   ]);
   const [inputMessage, setInputMessage] = useState('');
 
-  // ฟังก์ชันเพิ่มสินค้าลงตะกร้า
+  // เพิ่มสินค้าลงตะกร้า (ตรวจสอบสต็อกคงเหลือ)
   const addToCart = (product: typeof products[0]) => {
+    const existingInCart = cart.find((item) => item.id === product.id);
+    const currentQtyInCart = existingInCart ? existingInCart.quantity : 0;
+
+    if (currentQtyInCart + 1 > product.stock) {
+      alert('สินค้าในสต็อกมีไม่เพียงพอค่ะ');
+      return;
+    }
+
     setCart((prevCart) => {
-      const existingItem = prevCart.find((item) => item.id === product.id);
-      if (existingItem) {
+      if (existingInCart) {
         return prevCart.map((item) =>
           item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
@@ -91,6 +120,16 @@ export default function HomePage() {
   };
 
   const updateQuantity = (id: number, delta: number) => {
+    const targetProduct = products.find((p) => p.id === id);
+    const targetCartItem = cart.find((item) => item.id === id);
+
+    if (delta > 0 && targetProduct && targetCartItem) {
+      if (targetCartItem.quantity + 1 > targetProduct.stock) {
+        alert('สินค้าในสต็อกหมดแล้วค่ะ');
+        return;
+      }
+    }
+
     setCart((prevCart) =>
       prevCart
         .map((item) => {
@@ -107,12 +146,40 @@ export default function HomePage() {
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  // สมัครสมาชิกเสร็จ -> บันทึกชื่อผู้ใช้ ปิด Modal -> พาไปหน้าเลือกสินค้าอัตโนมัติ
+  // ดำเนินการสั่งซื้อ (ตัดสต็อกสินค้า และบันทึกลงบัญชีสินค้า)
+  const handleCheckout = () => {
+    // ตัดสต็อกสินค้าจริง
+    const updatedProducts = products.map((prod) => {
+      const cartItem = cart.find((item) => item.id === prod.id);
+      if (cartItem) {
+        return { ...prod, stock: prod.stock - cartItem.quantity };
+      }
+      return prod;
+    });
+
+    // บันทึกประวัติลง Stock Ledger
+    const newLogs: StockLog[] = cart.map((item, index) => ({
+      id: Date.now() + index,
+      date: new Date().toLocaleString(),
+      productName: item.name,
+      type: 'OUT',
+      quantity: item.quantity,
+      note: `ขายให้ลูกค้า: ${currentUser || 'Guest'}`,
+    }));
+
+    setProducts(updatedProducts);
+    setStockLogs((prev) => [...newLogs, ...prev]);
+
+    alert('สั่งซื้อสินค้าเรียบร้อยแล้ว! ระบบได้ทำการตัดสต็อกและบันทึกบัญชีสินค้าให้แล้วค่ะ');
+    setCart([]);
+    setIsCartOpen(false);
+  };
+
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !password) return;
     setCurrentUser(name);
-    setAuthModal(null); // ปิด Modal สมัครสมาชิก
+    setAuthModal(null);
     setName('');
     setEmail('');
     setPassword('');
@@ -136,17 +203,13 @@ export default function HomePage() {
     setInputMessage('');
 
     setTimeout(() => {
-      let botReply = 'ขอบคุณสำหรับข้อความค่ะ เจ้าหน้าที่แอดมินจะรีบตรวจสอบและติดต่อกลับโดยเร็วที่สุด หรือสอบถามโปรโมชั่นเพิ่มเติมได้เลยนะคะ';
-      
+      let botReply = 'ขอบคุณสำหรับข้อความค่ะ เจ้าหน้าที่แอดมินจะรีบตรวจสอบและติดต่อกลับโดยเร็วที่สุดค่ะ';
       const lowerText = userText.toLowerCase();
       if (lowerText.includes('ส่ง') || lowerText.includes('ค่าส่ง')) {
         botReply = 'ทางเราจัดส่งสินค้าทั่วประเทศ ค่าจัดส่งเริ่มต้นเพียง 30 บาท ส่งไวภายใน 1-3 วันค่ะ 📦';
-      } else if (lowerText.includes('ราคา') || lowerText.includes('ลด')) {
-        botReply = 'ตอนนี้เรามีโค้ดส่วนลดพิเศษสำหรับลูกค้าใหม่ ลดทันที 10% เมื่อช้อปครบ 500 บาทค่ะ 🏷️';
-      } else if (lowerText.includes('สวัสดี') || lowerText.includes('hi')) {
-        botReply = 'สวัสดีค่ะ! สนใจสินค้าหมวดไหนหรือต้องการให้แอดมินช่วยแนะนำตัวไหนดีคะ?';
+      } else if (lowerText.includes('สต็อก') || lowerText.includes('สินค้า')) {
+        botReply = 'สามารถดูสินค้าและสถานะสต็อกคงเหลือได้จากหน้าแรกเลยนะคะ ระบบอัปเดตแบบเรียลไทม์ค่ะ 📊';
       }
-
       setMessages((prev) => [...prev, { sender: 'bot', text: botReply }]);
     }, 600);
   };
@@ -159,10 +222,16 @@ export default function HomePage() {
           <Link href="/" className="text-2xl font-bold text-indigo-600">
             kruklaapp
           </Link>
-          <nav className="hidden md:flex space-x-8">
+          <nav className="hidden md:flex space-x-6 items-center">
             <Link href="/" className="text-gray-600 hover:text-indigo-600 font-medium">หน้าแรก</Link>
-            <Link href="/products" className="text-gray-600 hover:text-indigo-600 font-medium">สินค้าทั้งหมด</Link>
-            <Link href="/about" className="text-gray-600 hover:text-indigo-600 font-medium">เกี่ยวกับเรา</Link>
+            <Link href="#products" className="text-gray-600 hover:text-indigo-600 font-medium">เลือกสินค้า</Link>
+            {/* ปุ่มเปิดระบบบัญชีสินค้า (Stock Ledger) */}
+            <button
+              onClick={() => setIsStockModalOpen(true)}
+              className="text-gray-600 hover:text-indigo-600 font-medium cursor-pointer flex items-center gap-1"
+            >
+              📊 บัญชีสต็อกสินค้า
+            </button>
           </nav>
           <div className="flex items-center space-x-4">
             <button 
@@ -183,7 +252,7 @@ export default function HomePage() {
                 <button
                   onClick={() => {
                     setCurrentUser(null);
-                    setAuthModal('register'); // เปิดหน้าสมัครสมาชิกใหม่เมื่อกดออกจากระบบ
+                    setAuthModal('register');
                   }}
                   className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg transition cursor-pointer"
                 >
@@ -217,14 +286,22 @@ export default function HomePage() {
             ยินดีต้อนรับสู่ kruklaapp
           </h1>
           <p className="text-lg sm:text-xl text-indigo-100 mb-8 max-w-2xl mx-auto">
-            แหล่งรวมสินค้าราคาพิเศษ คัดสรรคุณภาพดีเพื่อคุณ ช้อปง่าย ส่งไว มั่นใจได้ 100%
+            แหล่งรวมสินค้าราคาพิเศษ คัดสรรคุณภาพดีพร้อมระบบจัดการคลังสินค้ามาตรฐาน
           </p>
-          <a
-            href="#products"
-            className="bg-white text-indigo-600 font-semibold px-8 py-3 rounded-full shadow-lg hover:bg-gray-100 transition duration-300 inline-block"
-          >
-            ช้อปเลยตอนนี้
-          </a>
+          <div className="flex justify-center gap-4">
+            <a
+              href="#products"
+              className="bg-white text-indigo-600 font-semibold px-8 py-3 rounded-full shadow-lg hover:bg-gray-100 transition duration-300 inline-block"
+            >
+              ช้อปเลยตอนนี้
+            </a>
+            <button
+              onClick={() => setIsStockModalOpen(true)}
+              className="bg-indigo-700 text-white font-semibold px-6 py-3 rounded-full shadow-lg hover:bg-indigo-800 transition duration-300 border border-indigo-500 cursor-pointer"
+            >
+              📊 ตรวจสอบบัญชีสต็อก
+            </button>
+          </div>
         </div>
       </section>
 
@@ -244,7 +321,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured Products (หน้าเลือกสินค้า) */}
+      {/* Featured Products (หน้าเลือกสินค้า พร้อมแสดงสต็อกคงเหลือ) */}
       <section id="products" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <h2 className="text-2xl font-bold mb-6">สินค้าแนะนำ</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -260,6 +337,9 @@ export default function HomePage() {
                     alt={product.name}
                     className="w-full h-full object-cover"
                   />
+                  <span className={`absolute top-2 right-2 px-2.5 py-1 rounded-full text-xs font-bold ${product.stock > 0 ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+                    {product.stock > 0 ? `เหลือ: ${product.stock}` : 'สินค้าหมด'}
+                  </span>
                 </div>
                 <div className="p-4">
                   <span className="text-xs text-indigo-500 font-semibold uppercase tracking-wider">
@@ -276,9 +356,14 @@ export default function HomePage() {
               <div className="p-4 pt-0">
                 <button
                   onClick={() => addToCart(product)}
-                  className="w-full bg-indigo-600 text-white py-2 rounded-xl font-medium hover:bg-indigo-700 transition cursor-pointer"
+                  disabled={product.stock === 0}
+                  className={`w-full py-2 rounded-xl font-medium transition cursor-pointer ${
+                    product.stock > 0 
+                      ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
                 >
-                  เพิ่มลงตะกร้า
+                  {product.stock > 0 ? 'เพิ่มลงตะกร้า' : 'สินค้าหมด'}
                 </button>
               </div>
             </div>
@@ -293,11 +378,95 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* ================= AUTH MODALS (เปิดอัตโนมัติเมื่อเข้าหน้าแรก) ================= */}
+      {/* ================= STOCK LEDGER MODAL (ระบบบัญชีสินค้า) ================= */}
+      {isStockModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="bg-indigo-600 text-white p-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold flex items-center gap-2">📊 ระบบบัญชีและสต็อกสินค้า (Stock Ledger)</h2>
+              <button
+                onClick={() => setIsStockModalOpen(false)}
+                className="text-indigo-200 hover:text-white text-xl font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {/* ตารางสต็อกคงเหลือปัจจุบัน */}
+              <div>
+                <h3 className="font-bold text-gray-800 mb-3 text-base">สถานะสินค้าคงเหลือปัจจุบัน</h3>
+                <div className="overflow-x-auto border border-gray-100 rounded-xl">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-50 text-gray-600 border-b border-gray-100">
+                      <tr>
+                        <th className="p-3">รหัสสินค้า</th>
+                        <th className="p-3">ชื่อสินค้า</th>
+                        <th className="p-3">หมวดหมู่</th>
+                        <th className="p-3 text-right">ราคา</th>
+                        <th className="p-3 text-right">คงเหลือ (ชิ้น)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {products.map((p) => (
+                        <tr key={p.id} className="hover:bg-gray-50">
+                          <td className="p-3 font-medium text-gray-500">#{p.id}</td>
+                          <td className="p-3 font-semibold text-gray-800">{p.name}</td>
+                          <td className="p-3 text-gray-600">{p.category}</td>
+                          <td className="p-3 text-right font-medium">฿{p.price.toLocaleString()}</td>
+                          <td className={`p-3 text-right font-bold ${p.stock > 5 ? 'text-green-600' : 'text-red-600'}`}>
+                            {p.stock}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* ตารางประวัติความเคลื่อนไหวสต็อก (Stock Movement History) */}
+              <div>
+                <h3 className="font-bold text-gray-800 mb-3 text-base">ประวัติความเคลื่อนไหว (Stock Movement Ledger)</h3>
+                <div className="overflow-x-auto border border-gray-100 rounded-xl">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-50 text-gray-600 border-b border-gray-100">
+                      <tr>
+                        <th className="p-3">วัน-เวลา</th>
+                        <th className="p-3">รายการสินค้า</th>
+                        <th className="p-3 text-center">ประเภท</th>
+                        <th className="p-3 text-right">จำนวน</th>
+                        <th className="p-3">หมายเหตุ</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {stockLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-gray-50">
+                          <td className="p-3 text-gray-500 text-xs">{log.date}</td>
+                          <td className="p-3 font-medium text-gray-800">{log.productName}</td>
+                          <td className="p-3 text-center">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                              log.type === 'IN' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                            }`}>
+                              {log.type === 'IN' ? 'รับเข้า (IN)' : 'จ่ายออก (OUT)'}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right font-bold">{log.quantity}</td>
+                          <td className="p-3 text-gray-600 text-xs">{log.note}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= AUTH MODALS ================= */}
       {authModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
-            {/* ซ่อนปุ่มกากบาทถ้ายังไม่ได้สมัครสมาชิก เพื่อบังคับให้สมัครก่อน */}
             {currentUser && (
               <button
                 onClick={() => setAuthModal(null)}
@@ -307,12 +476,10 @@ export default function HomePage() {
               </button>
             )}
 
-            {/* Login Form */}
             {authModal === 'login' && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">เข้าสู่ระบบ</h2>
-                <p className="text-sm text-gray-500 mb-6">ยินดีต้อนรับกลับสู่ kruklaapp อีกครั้ง</p>
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-4 mt-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1">อีเมล</label>
                     <input
@@ -344,22 +511,17 @@ export default function HomePage() {
                 </form>
                 <p className="text-center text-sm text-gray-500 mt-6">
                   ยังไม่มีบัญชีใช่ไหม?{' '}
-                  <button
-                    onClick={() => setAuthModal('register')}
-                    className="text-indigo-600 font-semibold hover:underline cursor-pointer"
-                  >
+                  <button onClick={() => setAuthModal('register')} className="text-indigo-600 font-semibold hover:underline cursor-pointer">
                     สมัครสมาชิก
                   </button>
                 </p>
               </div>
             )}
 
-            {/* Register Form */}
             {authModal === 'register' && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">สมัครสมาชิก</h2>
-                <p className="text-sm text-gray-500 mb-6">สมัครสมาชิกเพื่อเริ่มต้นเลือกซื้อสินค้ากับ kruklaapp</p>
-                <form onSubmit={handleRegister} className="space-y-4">
+                <form onSubmit={handleRegister} className="space-y-4 mt-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1">ชื่อผู้ใช้งาน</label>
                     <input
@@ -402,10 +564,7 @@ export default function HomePage() {
                 </form>
                 <p className="text-center text-sm text-gray-500 mt-6">
                   มีบัญชีอยู่แล้วใช่ไหม?{' '}
-                  <button
-                    onClick={() => setAuthModal('login')}
-                    className="text-indigo-600 font-semibold hover:underline cursor-pointer"
-                  >
+                  <button onClick={() => setAuthModal('login')} className="text-indigo-600 font-semibold hover:underline cursor-pointer">
                     เข้าสู่ระบบ
                   </button>
                 </p>
@@ -421,10 +580,7 @@ export default function HomePage() {
           <div className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col p-6 animate-in slide-in-from-right duration-300">
             <div className="flex items-center justify-between pb-4 border-b border-gray-100">
               <h2 className="text-xl font-bold text-gray-800">ตะกร้าสินค้าของคุณ ({totalCartItems})</h2>
-              <button
-                onClick={() => setIsCartOpen(false)}
-                className="text-gray-400 hover:text-gray-600 text-xl font-bold cursor-pointer"
-              >
+              <button onClick={() => setIsCartOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold cursor-pointer">
                 ✕
               </button>
             </div>
@@ -470,14 +626,10 @@ export default function HomePage() {
                   <span className="text-xl font-bold text-indigo-600">฿{totalPrice.toLocaleString()}</span>
                 </div>
                 <button
-                  onClick={() => {
-                    alert('สั่งซื้อสินค้าเรียบร้อยแล้ว! ขอบคุณที่ใช้บริการ kruklaapp');
-                    setCart([]);
-                    setIsCartOpen(false);
-                  }}
+                  onClick={handleCheckout}
                   className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium hover:bg-indigo-700 transition cursor-pointer"
                 >
-                  ดำเนินการสั่งซื้อ
+                  ดำเนินการสั่งซื้อและตัดสต็อก
                 </button>
               </div>
             )}
@@ -488,7 +640,7 @@ export default function HomePage() {
       {/* ================= CHATBOT WIDGET ================= */}
       <div className="fixed bottom-6 right-6 z-40">
         {isChatOpen && (
-          <div className="bg-white w-80 sm:w-96 h-[450px] rounded-2xl shadow-2xl border border-gray-200 flex flex-col mb-4 overflow-hidden transition-all duration-300">
+          <div className="bg-white w-80 sm:w-96 h-[450px] rounded-2xl shadow-2xl border border-gray-200 flex flex-col mb-4 overflow-hidden">
             <div className="bg-indigo-600 text-white p-4 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <span className="text-xl">🤖</span>
@@ -499,27 +651,15 @@ export default function HomePage() {
                   </span>
                 </div>
               </div>
-              <button 
-                onClick={() => setIsChatOpen(false)}
-                className="text-indigo-200 hover:text-white text-lg font-bold p-1 cursor-pointer"
-              >
+              <button onClick={() => setIsChatOpen(false)} className="text-indigo-200 hover:text-white text-lg font-bold p-1 cursor-pointer">
                 ✕
               </button>
             </div>
 
             <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50">
               {messages.map((msg, index) => (
-                <div
-                  key={index}
-                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[75%] p-3 rounded-2xl text-sm ${
-                      msg.sender === 'user'
-                        ? 'bg-indigo-600 text-white rounded-br-none'
-                        : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-bl-none'
-                    }`}
-                  >
+                <div key={index} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[75%] p-3 rounded-2xl text-sm ${msg.sender === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-bl-none'}`}>
                     {msg.text}
                   </div>
                 </div>
@@ -534,10 +674,7 @@ export default function HomePage() {
                 onChange={(e) => setInputMessage(e.target.value)}
                 className="flex-1 px-4 py-2 text-sm border border-gray-200 rounded-full focus:outline-none focus:border-indigo-600 text-gray-800"
               />
-              <button
-                type="submit"
-                className="bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-indigo-700 transition cursor-pointer"
-              >
+              <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-indigo-700 transition cursor-pointer">
                 ส่ง
               </button>
             </form>
